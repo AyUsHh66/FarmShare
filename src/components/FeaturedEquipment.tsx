@@ -17,8 +17,8 @@ const featuredEquipment: Equipment[] = [
     id: 1,
     name: "John Deere 6M Tractor",
     image: "https://images.pexels.com/photos/2252584/pexels-photo-2252584.jpeg",
-    price: "150/day",
-    location: "Springfield, IL",
+    price: "1,500",
+    location: "Mumbai, Maharashtra",
     rating: 4.8,
     description: "Powerful and reliable tractor suitable for various farming operations."
   },
@@ -26,8 +26,8 @@ const featuredEquipment: Equipment[] = [
     id: 2,
     name: "Combine Harvester",
     image: "https://images.pexels.com/photos/2252585/pexels-photo-2252585.jpeg",
-    price: "300/day",
-    location: "Des Moines, IA",
+    price: "3,000",
+    location: "Delhi, NCR",
     rating: 4.9,
     description: "Modern combine harvester with advanced grain handling system."
   },
@@ -35,8 +35,8 @@ const featuredEquipment: Equipment[] = [
     id: 3,
     name: "Seed Drill",
     image: "https://images.pexels.com/photos/2252586/pexels-photo-2252586.jpeg",
-    price: "80/day",
-    location: "Lincoln, NE",
+    price: "800",
+    location: "Bangalore, Karnataka",
     rating: 4.7,
     description: "Precision seed drill for efficient planting operations."
   }
@@ -103,11 +103,11 @@ const EquipmentCard: FC<{ item: Equipment }> = ({ item }) => {
         </div>
         <div className="mt-4 flex justify-between items-center">
           <div>
-            <span className="text-2xl font-bold text-primary-600">${item.price}</span>
+            <span className="text-2xl font-bold text-primary-600">₹{item.price}</span>
             <span className="text-sm text-gray-500 ml-1">/day</span>
           </div>
           <motion.button 
-            className="flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors duration-200"
+            className="flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >

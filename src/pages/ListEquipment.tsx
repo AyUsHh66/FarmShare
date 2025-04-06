@@ -1,6 +1,6 @@
 import { FC, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Upload, DollarSign, Calendar, Shield, Camera, Loader2 } from 'lucide-react'
+import { Upload, DollarSign, Calendar, Shield, Camera, Loader2, AlertCircle } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 interface EquipmentForm {
@@ -18,308 +18,217 @@ interface EquipmentForm {
 
 const ListEquipment: FC = () => {
   const navigate = useNavigate()
-  const [isLoading, setIsLoading] = useState(false)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [formData, setFormData] = useState<EquipmentForm>({
-    name: '',
-    description: '',
-    dailyRate: 0,
-    deposit: 0,
-    images: [],
-    insuranceRequired: true,
-    condition: '',
-    specifications: '',
-    availableFrom: '',
-    availableTo: ''
-  })
-  const [previewUrls, setPreviewUrls] = useState<string[]>([])
+  const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}')
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || [])
-    
-    // Create preview URLs for display
-    const newPreviewUrls = files.map(file => URL.createObjectURL(file))
-    setPreviewUrls(prev => [...prev, ...newPreviewUrls])
-
-    // Convert images to base64
-    try {
-      const base64Images = await Promise.all(
-        files.map(file => new Promise<string>((resolve, reject) => {
-          const reader = new FileReader()
-          reader.onload = () => resolve(reader.result as string)
-          reader.onerror = reject
-          reader.readAsDataURL(file)
-        }))
-      )
-
-      setFormData(prev => ({
-        ...prev,
-        images: [...prev.images, ...base64Images]
-      }))
-    } catch (err) {
-      setError('Error processing images. Please try again.')
-    }
+  // Debug function to check localStorage
+  const checkLocalStorage = () => {
+    const equipment = JSON.parse(localStorage.getItem('equipment') || '[]')
+    console.log('Current equipment in localStorage:', equipment)
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    setIsLoading(true)
+    setLoading(true)
     setError('')
 
     try {
-      // Get current user
-      const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}')
+      // Check if user is logged in
       if (!currentUser.id) {
         throw new Error('Please sign in to list equipment')
       }
 
-      // Validate form data
-      if (!formData.name || !formData.description || formData.dailyRate <= 0) {
+      const form = e.currentTarget
+      const formData = new FormData(form)
+
+      // Create new equipment object
+      const newEquipment = {
+        id: Date.now(),
+        name: formData.get('name')?.toString().trim(),
+        description: formData.get('description')?.toString().trim(),
+        price: formData.get('price')?.toString().trim(),
+        location: formData.get('location')?.toString().trim(),
+        images: [formData.get('imageUrl')?.toString().trim()],
+        availableFrom: formData.get('availableFrom')?.toString() || new Date().toISOString().split('T')[0],
+        availableTo: formData.get('availableTo')?.toString() || new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        insuranceRequired: formData.get('insuranceRequired') === 'on',
+        ownerId: currentUser.id,
+        ownerName: currentUser.name
+      }
+
+      // Validate required fields
+      if (!newEquipment.name || !newEquipment.price || !newEquipment.location || !newEquipment.images[0]) {
         throw new Error('Please fill in all required fields')
       }
 
-      // Get existing listings or initialize empty array
-      const existingListings = JSON.parse(localStorage.getItem('equipmentListings') || '[]')
+      // Get existing equipment from localStorage
+      const existingEquipment = JSON.parse(localStorage.getItem('equipment') || '[]')
       
-      // Create new listing
-      const newListing = {
-        ...formData,
-        id: Date.now(),
-        ownerId: currentUser.id,
-        ownerName: currentUser.name,
-        createdAt: new Date().toISOString(),
-        status: 'available'
-      }
-
-      // Add to listings
-      existingListings.push(newListing)
-      localStorage.setItem('equipmentListings', JSON.stringify(existingListings))
-
-      // Show success message
-      alert('Equipment listed successfully!')
+      // Add new equipment
+      const updatedEquipment = [...existingEquipment, newEquipment]
       
-      // Navigate to equipment page
-      navigate('/equipment')
+      // Save to localStorage
+      localStorage.setItem('equipment', JSON.stringify(updatedEquipment))
+
+      // Debug logs
+      console.log('New equipment added:', newEquipment)
+      console.log('Updated equipment list:', updatedEquipment)
+      
+      // Navigate to my equipment page
+      navigate('/my-equipment')
     } catch (err: any) {
+      console.error('Error adding equipment:', err)
       setError(err.message)
     } finally {
-      setIsLoading(false)
+      setLoading(false)
     }
   }
+
+  // Check localStorage on component mount
+  useState(() => {
+    checkLocalStorage()
+  })
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-3xl mx-auto">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white p-8 rounded-lg shadow-lg"
-        >
-          <h2 className="text-2xl font-bold mb-6">List Your Equipment</h2>
-          
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md text-sm">
-                {error}
-              </div>
-            )}
+        <div className="bg-white rounded-lg shadow-sm p-6 md:p-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-6">List Your Equipment</h1>
 
-            {/* Equipment Images */}
+          {error && (
+            <div className="mb-6 bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md flex items-center">
+              <AlertCircle className="h-5 w-5 mr-2" />
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Equipment Photos
+              <label htmlFor="name" className="block text-sm font-medium text-gray-700 required">
+                Equipment Name *
               </label>
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                {previewUrls.map((url, index) => (
-                  <div key={index} className="relative aspect-video rounded-lg overflow-hidden">
-                    <img src={url} alt="Preview" className="w-full h-full object-cover" />
-                  </div>
-                ))}
-              </div>
-              <div className="flex justify-center px-6 pt-5 pb-6 border-2 border-dashed border-gray-300 rounded-lg">
-                <div className="space-y-1 text-center">
-                  <Camera className="mx-auto h-12 w-12 text-gray-400" />
-                  <div className="flex text-sm text-gray-600">
-                    <label className="relative cursor-pointer bg-white rounded-md font-medium text-primary-600 hover:text-primary-500">
-                      <span>Upload images</span>
-                      <input
-                        type="file"
-                        multiple
-                        accept="image/*"
-                        className="sr-only"
-                        onChange={handleImageUpload}
-                      />
-                    </label>
-                  </div>
-                  <p className="text-xs text-gray-500">PNG, JPG up to 10MB each</p>
-                </div>
-              </div>
+              <input
+                type="text"
+                name="name"
+                id="name"
+                required
+                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                placeholder="e.g., John Deere Tractor"
+              />
             </div>
 
-            {/* Basic Information */}
-            <div className="grid grid-cols-1 gap-6">
+            <div>
+              <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+                Description
+              </label>
+              <textarea
+                name="description"
+                id="description"
+                rows={3}
+                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                placeholder="Describe your equipment..."
+              />
+            </div>
+
+            <div>
+              <label htmlFor="price" className="block text-sm font-medium text-gray-700 required">
+                Daily Rental Price (₹) *
+              </label>
+              <input
+                type="text"
+                name="price"
+                id="price"
+                required
+                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                placeholder="e.g., 2,500"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="location" className="block text-sm font-medium text-gray-700 required">
+                Location *
+              </label>
+              <input
+                type="text"
+                name="location"
+                id="location"
+                required
+                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                placeholder="e.g., Mumbai, Maharashtra"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="imageUrl" className="block text-sm font-medium text-gray-700 required">
+                Equipment Image URL *
+              </label>
+              <input
+                type="url"
+                name="imageUrl"
+                id="imageUrl"
+                required
+                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                placeholder="https://example.com/image.jpg"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
               <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Equipment Name
+                <label htmlFor="availableFrom" className="block text-sm font-medium text-gray-700">
+                  Available From
                 </label>
                 <input
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  required
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-                  placeholder="e.g., John Deere Tractor Model 6120M"
+                  type="date"
+                  name="availableFrom"
+                  id="availableFrom"
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Description
+                <label htmlFor="availableTo" className="block text-sm font-medium text-gray-700">
+                  Available To
                 </label>
-                <textarea
-                  name="description"
-                  value={formData.description}
-                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                  required
-                  rows={4}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-                  placeholder="Describe your equipment's features and condition..."
+                <input
+                  type="date"
+                  name="availableTo"
+                  id="availableTo"
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
                 />
               </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Daily Rate
-                  </label>
-                  <div className="mt-1 relative rounded-md shadow-sm">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center">
-                      <DollarSign className="h-5 w-5 text-gray-400" />
-                    </div>
-                    <input
-                      type="number"
-                      name="dailyRate"
-                      value={formData.dailyRate}
-                      onChange={(e) => setFormData(prev => ({ ...prev, dailyRate: parseFloat(e.target.value) }))}
-                      required
-                      min="0"
-                      step="0.01"
-                      className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-                      placeholder="0.00"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Security Deposit
-                  </label>
-                  <div className="mt-1 relative rounded-md shadow-sm">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center">
-                      <DollarSign className="h-5 w-5 text-gray-400" />
-                    </div>
-                    <input
-                      type="number"
-                      name="deposit"
-                      value={formData.deposit}
-                      onChange={(e) => setFormData(prev => ({ ...prev, deposit: parseFloat(e.target.value) }))}
-                      required
-                      min="0"
-                      step="0.01"
-                      className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-                      placeholder="0.00"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Available From
-                  </label>
-                  <input
-                    type="date"
-                    name="availableFrom"
-                    value={formData.availableFrom}
-                    onChange={(e) => setFormData(prev => ({ ...prev, availableFrom: e.target.value }))}
-                    required
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Available To
-                  </label>
-                  <input
-                    type="date"
-                    name="availableTo"
-                    value={formData.availableTo}
-                    onChange={(e) => setFormData(prev => ({ ...prev, availableTo: e.target.value }))}
-                    required
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-                  />
-                </div>
-              </div>
             </div>
 
-            {/* Insurance Section */}
-            <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
-              <div className="flex items-start">
-                <div className="flex-shrink-0">
-                  <Shield className="h-6 w-6 text-primary-600" />
-                </div>
-                <div className="ml-3">
-                  <h3 className="text-lg font-medium text-gray-900">Insurance Requirements</h3>
-                  <div className="mt-2">
-                    <div className="space-y-4">
-                      <div className="flex items-center">
-                        <input
-                          type="checkbox"
-                          name="insuranceRequired"
-                          checked={formData.insuranceRequired}
-                          onChange={(e) => setFormData(prev => ({ ...prev, insuranceRequired: e.target.checked }))}
-                          className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-                        />
-                        <label className="ml-2 block text-sm text-gray-900">
-                          Require renter to provide insurance
-                        </label>
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        Renters must provide proof of insurance that covers:
-                        <ul className="list-disc ml-5 mt-2">
-                          <li>Accidental damage</li>
-                          <li>Theft protection</li>
-                          <li>Third-party liability</li>
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                name="insuranceRequired"
+                id="insuranceRequired"
+                className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+              />
+              <label htmlFor="insuranceRequired" className="ml-2 block text-sm text-gray-700">
+                Require insurance from renters
+              </label>
             </div>
 
-            {/* Submit Button */}
-            <div className="flex justify-end">
+            <div className="flex justify-end space-x-4">
+              <button
+                type="button"
+                onClick={() => navigate('/my-equipment')}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+              >
+                Cancel
+              </button>
               <button
                 type="submit"
-                disabled={isLoading}
-                className="inline-flex items-center justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={loading}
+                className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4" />
-                    Listing Equipment...
-                  </>
-                ) : (
-                  'List Equipment'
-                )}
+                {loading ? 'Listing...' : 'List Equipment'}
               </button>
             </div>
           </form>
-        </motion.div>
+        </div>
       </div>
     </div>
   )

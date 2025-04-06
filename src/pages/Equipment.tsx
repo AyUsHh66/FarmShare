@@ -1,6 +1,6 @@
 import { FC, useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { DollarSign, Calendar, Shield, ExternalLink, Image as ImageIcon, X, CheckCircle, AlertCircle } from 'lucide-react'
+import { DollarSign, Calendar, Shield, ExternalLink, Image as ImageIcon, X, CheckCircle, AlertCircle, MapPin, Search } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 interface EquipmentListing {
@@ -18,6 +18,9 @@ interface EquipmentListing {
   ownerId: string
   createdAt: string
   status: string
+  location: string
+  price: string
+  ownerName: string
 }
 
 interface RentalDetails {
@@ -29,7 +32,7 @@ interface RentalDetails {
 }
 
 const Equipment: FC = () => {
-  const [listings, setListings] = useState<EquipmentListing[]>([])
+  const [equipment, setEquipment] = useState<EquipmentListing[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [priceFilter, setPriceFilter] = useState('all')
@@ -38,26 +41,29 @@ const Equipment: FC = () => {
   const [rentalDetails, setRentalDetails] = useState<RentalDetails | null>(null)
   const [error, setError] = useState('')
 
+  const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+
   useEffect(() => {
-    // Load listings from localStorage
-    const storedListings = localStorage.getItem('equipmentListings')
-    if (storedListings) {
-      setListings(JSON.parse(storedListings))
+    loadEquipment();
+  }, []);
+
+  const loadEquipment = () => {
+    try {
+      const data = JSON.parse(localStorage.getItem('equipment') || '[]');
+      setEquipment(data);
+    } catch (error) {
+      console.error('Error loading equipment:', error);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false)
-  }, [])
+  };
 
   // Filter listings based on search term and price filter
-  const filteredListings = listings.filter(listing => {
-    const matchesSearch = listing.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         listing.description.toLowerCase().includes(searchTerm.toLowerCase())
-    
-    if (priceFilter === 'all') return matchesSearch
-    if (priceFilter === 'low') return matchesSearch && listing.dailyRate <= 100
-    if (priceFilter === 'medium') return matchesSearch && listing.dailyRate > 100 && listing.dailyRate <= 500
-    if (priceFilter === 'high') return matchesSearch && listing.dailyRate > 500
-    return matchesSearch
-  })
+  const filteredEquipment = equipment.filter(item =>
+    item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    item.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    item.description.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const handleDelete = (listingId: number) => {
     const confirmDelete = window.confirm('Are you sure you want to delete this listing?')
@@ -67,7 +73,7 @@ const Equipment: FC = () => {
         const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}')
         
         // Get all listings
-        const allListings = JSON.parse(localStorage.getItem('equipmentListings') || '[]')
+        const allListings = JSON.parse(localStorage.getItem('equipment') || '[]')
         
         // Find the listing
         const listing = allListings.find((l: any) => l.id === listingId)
@@ -78,10 +84,10 @@ const Equipment: FC = () => {
           const updatedListings = allListings.filter((l: any) => l.id !== listingId)
           
           // Save updated listings
-          localStorage.setItem('equipmentListings', JSON.stringify(updatedListings))
+          localStorage.setItem('equipment', JSON.stringify(updatedListings))
           
           // Update state
-          setListings(updatedListings)
+          setEquipment(updatedListings)
         } else {
           alert('You can only delete your own listings')
         }
@@ -124,7 +130,17 @@ const Equipment: FC = () => {
         throw new Error('Please select both start and end dates')
       }
 
-      if (new Date(startDate) > new Date(endDate)) {
+      const startDateTime = new Date(startDate).getTime()
+      const endDateTime = new Date(endDate).getTime()
+      const availableFromTime = new Date(selectedEquipment.availableFrom).getTime()
+      const availableToTime = new Date(selectedEquipment.availableTo).getTime()
+
+      // Check if rental dates are within available range
+      if (startDateTime < availableFromTime || endDateTime > availableToTime) {
+        throw new Error(`Equipment is only available from ${new Date(selectedEquipment.availableFrom).toLocaleDateString()} to ${new Date(selectedEquipment.availableTo).toLocaleDateString()}`)
+      }
+
+      if (startDateTime > endDateTime) {
         throw new Error('End date must be after start date')
       }
 
@@ -140,13 +156,17 @@ const Equipment: FC = () => {
         id: Date.now(),
         equipmentId: selectedEquipment.id,
         equipmentName: selectedEquipment.name,
+        equipmentImage: selectedEquipment.images[0],
         startDate,
         endDate,
         totalDays,
         totalCost,
         insuranceAccepted: acceptInsurance,
         renterId: JSON.parse(localStorage.getItem('currentUser') || '{}').id,
-        status: 'pending'
+        renterName: JSON.parse(localStorage.getItem('currentUser') || '{}').name,
+        ownerId: selectedEquipment.ownerId,
+        status: 'pending',
+        createdAt: new Date().toISOString()
       }
       rentals.push(newRental)
       localStorage.setItem('rentals', JSON.stringify(rentals))
@@ -199,7 +219,7 @@ const Equipment: FC = () => {
         <div className="mb-8 space-y-4 sm:space-y-0 sm:flex sm:items-center sm:space-x-4">
           <div className="relative flex-1">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <ImageIcon className="h-5 w-5 text-gray-400" />
+              <Search className="h-5 w-5 text-gray-400" />
             </div>
             <input
               type="text"
@@ -223,7 +243,7 @@ const Equipment: FC = () => {
           </div>
         </div>
 
-        {filteredListings.length === 0 ? (
+        {filteredEquipment.length === 0 ? (
           <div className="text-center py-12">
             <h3 className="mt-2 text-sm font-medium text-gray-900">
               {searchTerm ? 'No equipment matches your search' : 'No equipment listed'}
@@ -244,87 +264,53 @@ const Equipment: FC = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredListings.map((listing) => (
+            {filteredEquipment.map((item) => (
               <motion.div
-                key={listing.id}
+                key={item.id}
+                className="bg-white rounded-lg shadow-md overflow-hidden"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200 hover:shadow-lg transition-shadow duration-200"
               >
-                {/* Equipment Image */}
-                <div className="aspect-w-16 aspect-h-9 bg-gray-100">
-                  {listing.images && listing.images.length > 0 ? (
-                    <img
-                      src={listing.images[0]}
-                      alt={listing.name}
-                      className="w-full h-48 object-cover"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.src = 'https://images.unsplash.com/photo-1586496235841-7809b7564a8f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80';
-                      }}
-                    />
-                  ) : (
-                    <div className="w-full h-48 flex flex-col items-center justify-center bg-gray-100">
-                      <ImageIcon className="h-12 w-12 text-gray-400" />
-                      <span className="text-sm text-gray-500 mt-2">No image available</span>
-                    </div>
-                  )}
+                <div className="relative h-48">
+                  <img
+                    src={item.images[0]}
+                    alt={item.name}
+                    className="w-full h-full object-cover"
+                  />
                 </div>
-
-                {/* Equipment Details */}
                 <div className="p-6">
-                  <h3 className="text-lg font-semibold text-gray-900">{listing.name}</h3>
-                  <p className="mt-2 text-sm text-gray-500 line-clamp-2">{listing.description}</p>
+                  <h3 className="text-xl font-semibold text-gray-900">{item.name}</h3>
+                  <p className="mt-2 text-gray-600 line-clamp-2">{item.description}</p>
+                  
+                  <div className="mt-4 flex items-center text-sm text-gray-500">
+                    <MapPin className="h-4 w-4 mr-1" />
+                    <span>{item.location}</span>
+                  </div>
 
-                  <div className="mt-4 space-y-3">
-                    {/* Daily Rate */}
-                    <div className="flex items-center text-sm">
-                      <DollarSign className="h-5 w-5 text-gray-400 mr-2" />
-                      <span className="text-gray-700">
-                        ${listing.dailyRate}/day
-                        {listing.deposit > 0 && ` (${listing.deposit} deposit)`}
-                      </span>
+                  <div className="mt-4 flex items-center justify-between">
+                    <div>
+                      <span className="text-2xl font-bold text-primary-600">₹{item.price}</span>
+                      <span className="text-sm text-gray-500 ml-1">/day</span>
                     </div>
-
-                    {/* Availability */}
-                    <div className="flex items-center text-sm">
-                      <Calendar className="h-5 w-5 text-gray-400 mr-2" />
-                      <span className="text-gray-700">
-                        Available: {new Date(listing.availableFrom).toLocaleDateString()} - {new Date(listing.availableTo).toLocaleDateString()}
-                      </span>
-                    </div>
-
-                    {/* Insurance Required */}
-                    {listing.insuranceRequired && (
-                      <div className="flex items-center text-sm">
-                        <Shield className="h-5 w-5 text-gray-400 mr-2" />
-                        <span className="text-gray-700">Insurance required</span>
-                      </div>
+                    {item.ownerId !== currentUser.id && (
+                      <motion.button
+                        onClick={() => handleRentClick(item)}
+                        className="flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        <Calendar className="h-4 w-4 mr-2" />
+                        Rent Now
+                      </motion.button>
                     )}
                   </div>
 
-                  {/* Action Button */}
-                  <div className="mt-6">
-                    <button
-                      onClick={() => handleRentClick(listing)}
-                      className="w-full inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-                    >
-                      Rent Now
-                      <ExternalLink className="ml-2 h-4 w-4" />
-                    </button>
+                  <div className="mt-4 text-sm text-gray-500">
+                    <p>Available: {new Date(item.availableFrom).toLocaleDateString()} - {new Date(item.availableTo).toLocaleDateString()}</p>
+                    {item.insuranceRequired && (
+                      <p className="mt-1">Insurance required</p>
+                    )}
                   </div>
-
-                  {/* Add delete button if user owns the listing */}
-                  {listing.ownerId === JSON.parse(localStorage.getItem('currentUser') || '{}').id && (
-                    <div className="px-6 py-4 border-t border-gray-100">
-                      <button
-                        onClick={() => handleDelete(listing.id)}
-                        className="text-gray-500 hover:text-red-600 transition-colors duration-200 absolute top-4 right-4"
-                      >
-                        <X className="h-5 w-5" />
-                      </button>
-                    </div>
-                  )}
                 </div>
               </motion.div>
             ))}

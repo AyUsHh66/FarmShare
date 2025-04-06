@@ -1,6 +1,7 @@
-import { FC } from 'react'
+import { FC, useState } from 'react'
 import { Search, MapPin, Star, Shield, Clock, ChevronRight, CheckCircle2 } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { useNavigate } from 'react-router-dom'
 import FeaturedEquipment from '../components/FeaturedEquipment'
 import HowItWorks from '../components/HowItWorks'
 import AnimatedImageGrid from '../components/AnimatedImageGrid'
@@ -59,6 +60,16 @@ const staggerContainer = {
 }
 
 const Home: FC = () => {
+  const [searchQuery, setSearchQuery] = useState('')
+  const navigate = useNavigate()
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (searchQuery.trim()) {
+      navigate(`/equipment?search=${encodeURIComponent(searchQuery.trim())}`)
+    }
+  }
+
   return (
     <div>
       {/* Hero Section */}
@@ -96,20 +107,23 @@ const Home: FC = () => {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.8, delay: 0.6 }}
                 >
-                  <div className="relative rounded-full w-full max-w-lg">
+                  <form onSubmit={handleSearch} className="relative rounded-full w-full max-w-lg">
                     <input
                       type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder="Search for equipment..."
                       className="w-full px-6 py-4 rounded-full border-2 border-gray-300 focus:outline-none focus:border-primary-500 shadow-sm"
                     />
                     <motion.button 
+                      type="submit"
                       className="absolute right-2 top-2 bg-primary-600 text-white p-2 rounded-full hover:bg-primary-700 transition-colors duration-200"
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                     >
                       <Search className="h-6 w-6" />
                     </motion.button>
-                  </div>
+                  </form>
                 </motion.div>
                 <motion.div 
                   className="mt-8 flex items-center justify-center lg:justify-start space-x-6"
@@ -251,28 +265,34 @@ const Home: FC = () => {
       </section>
 
       {/* CTA Section */}
-      <section className="py-16 bg-primary-600">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div 
-            className="text-center"
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5 }}
-          >
-            <h2 className="text-3xl font-bold text-white mb-4">Ready to Get Started?</h2>
-            <p className="text-lg text-primary-100 mb-8 max-w-2xl mx-auto">
-              Join thousands of farmers who are already saving money and time with our platform
-            </p>
-            <motion.button
-              className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-full text-primary-600 bg-white hover:bg-primary-50 transition-colors duration-200"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              Start Renting Today
-              <ChevronRight className="ml-2 h-5 w-5" />
-            </motion.button>
-          </motion.div>
+      <section className="bg-primary-600">
+        <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:py-16 lg:px-8 lg:flex lg:items-center lg:justify-between">
+          <h2 className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+            <span className="block">Ready to get started?</span>
+            <span className="block text-primary-200">Join our community today.</span>
+          </h2>
+          <div className="mt-8 flex lg:mt-0 lg:flex-shrink-0">
+            <motion.div className="inline-flex rounded-md shadow">
+              <motion.button
+                onClick={() => navigate('/equipment')}
+                className="inline-flex items-center justify-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-primary-600 bg-white hover:bg-primary-50"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                Start Renting
+              </motion.button>
+            </motion.div>
+            <motion.div className="ml-3 inline-flex rounded-md shadow">
+              <motion.button
+                onClick={() => navigate('/how-it-works')}
+                className="inline-flex items-center justify-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-white bg-primary-500 hover:bg-primary-700"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                Learn More
+              </motion.button>
+            </motion.div>
+          </div>
         </div>
       </section>
     </div>
