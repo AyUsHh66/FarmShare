@@ -1,33 +1,56 @@
-import { FC, useState, useRef } from 'react'
+import { FC, useState, useEffect, useRef } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Upload, DollarSign, Calendar, Shield, Camera, Loader2, AlertCircle, X } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
 
-interface EquipmentForm {
+interface Equipment {
+  id: number
   name: string
   description: string
-  dailyRate: number
-  deposit: number
+  price: string
+  location: string
   images: string[]
-  insuranceRequired: boolean
-  condition: string
-  specifications: string
   availableFrom: string
   availableTo: string
+  insuranceRequired: boolean
+  ownerId: string
+  ownerName: string
 }
 
-const ListEquipment: FC = () => {
+const EquipmentEditPage: FC = () => {
+  const { id } = useParams()
   const navigate = useNavigate()
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [equipment, setEquipment] = useState<Equipment | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}')
 
-  // Debug function to check localStorage
-  const checkLocalStorage = () => {
-    const equipment = JSON.parse(localStorage.getItem('equipment') || '[]')
-    console.log('Current equipment in localStorage:', equipment)
+  useEffect(() => {
+    loadEquipment()
+  }, [id])
+
+  const loadEquipment = () => {
+    try {
+      const allEquipment = JSON.parse(localStorage.getItem('equipment') || '[]')
+      const equipmentToEdit = allEquipment.find((item: Equipment) => item.id === Number(id))
+      
+      if (!equipmentToEdit) {
+        throw new Error('Equipment not found')
+      }
+
+      if (equipmentToEdit.ownerId !== currentUser.id) {
+        throw new Error('You can only edit your own equipment')
+      }
+
+      setEquipment(equipmentToEdit)
+      setImagePreview(equipmentToEdit.images[0])
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -48,79 +71,86 @@ const ListEquipment: FC = () => {
     setError('')
 
     try {
-      // Check if user is logged in
-      if (!currentUser.id) {
-        throw new Error('Please sign in to list equipment')
-      }
-
-      // Check if an image was uploaded
-      if (!imagePreview) {
-        throw new Error('Please upload an image of your equipment')
-      }
-
       const form = e.currentTarget
       const formData = new FormData(form)
 
-      // Create new equipment object
-      const newEquipment = {
-        id: Date.now(),
+      // Use the image preview if available, otherwise use the existing image
+      const imageToUse = imagePreview || equipment?.images[0]
+
+      const updatedEquipment = {
+        ...equipment,
         name: formData.get('name')?.toString().trim(),
         description: formData.get('description')?.toString().trim(),
         price: formData.get('price')?.toString().trim(),
         location: formData.get('location')?.toString().trim(),
-        images: [imagePreview],
-        availableFrom: formData.get('availableFrom')?.toString() || new Date().toISOString().split('T')[0],
-        availableTo: formData.get('availableTo')?.toString() || new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        insuranceRequired: formData.get('insuranceRequired') === 'on',
-        ownerId: currentUser.id,
-        ownerName: currentUser.name
+        images: [imageToUse],
+        availableFrom: formData.get('availableFrom')?.toString() || equipment?.availableFrom,
+        availableTo: formData.get('availableTo')?.toString() || equipment?.availableTo,
+        insuranceRequired: formData.get('insuranceRequired') === 'on'
       }
 
       // Validate required fields
-      if (!newEquipment.name || !newEquipment.price || !newEquipment.location) {
+      if (!updatedEquipment.name || !updatedEquipment.price || !updatedEquipment.location || !updatedEquipment.images[0]) {
         throw new Error('Please fill in all required fields')
       }
 
       // Get existing equipment from localStorage
-      const existingEquipment = JSON.parse(localStorage.getItem('equipment') || '[]')
+      const allEquipment = JSON.parse(localStorage.getItem('equipment') || '[]')
       
-      // Add new equipment
-      const updatedEquipment = [...existingEquipment, newEquipment]
+      // Update the equipment
+      const updatedAllEquipment = allEquipment.map((item: Equipment) => 
+        item.id === Number(id) ? updatedEquipment : item
+      )
       
       // Save to localStorage
-      localStorage.setItem('equipment', JSON.stringify(updatedEquipment))
-
-      // Debug logs
-      console.log('New equipment added:', newEquipment)
-      console.log('Updated equipment list:', updatedEquipment)
+      localStorage.setItem('equipment', JSON.stringify(updatedAllEquipment))
       
-      // Navigate to my equipment page
+      // Navigate back to my equipment page
       navigate('/my-equipment')
     } catch (err: any) {
-      console.error('Error adding equipment:', err)
+      console.error('Error updating equipment:', err)
       setError(err.message)
     } finally {
       setLoading(false)
     }
   }
 
-  // Check localStorage on component mount
-  useState(() => {
-    checkLocalStorage()
-  })
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600"></div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-3xl mx-auto">
+          <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md flex items-center">
+            <AlertCircle className="h-5 w-5 mr-2" />
+            {error}
+          </div>
+          <button
+            onClick={() => navigate('/my-equipment')}
+            className="mt-4 px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-md hover:bg-primary-700"
+          >
+            Back to My Equipment
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (!equipment) {
+    return null
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-3xl mx-auto">
         <div className="bg-white shadow rounded-lg p-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-6">List Your Equipment</h1>
-
-          {error && (
-            <div className="mb-6 bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md flex items-center">
-              <AlertCircle className="h-5 w-5 mr-2" />
-              {error}
-            </div>
-          )}
+          <h1 className="text-3xl font-bold text-gray-900 mb-6">Edit Equipment</h1>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
@@ -132,8 +162,8 @@ const ListEquipment: FC = () => {
                 name="name"
                 id="name"
                 required
+                defaultValue={equipment.name}
                 className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-                placeholder="e.g., John Deere Tractor"
               />
             </div>
 
@@ -145,8 +175,8 @@ const ListEquipment: FC = () => {
                 name="description"
                 id="description"
                 rows={3}
+                defaultValue={equipment.description}
                 className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-                placeholder="Describe your equipment..."
               />
             </div>
 
@@ -159,8 +189,8 @@ const ListEquipment: FC = () => {
                 name="price"
                 id="price"
                 required
+                defaultValue={equipment.price}
                 className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-                placeholder="e.g., 2,500"
               />
             </div>
 
@@ -173,8 +203,8 @@ const ListEquipment: FC = () => {
                 name="location"
                 id="location"
                 required
+                defaultValue={equipment.location}
                 className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-                placeholder="e.g., Mumbai, Maharashtra"
               />
             </div>
 
@@ -245,6 +275,7 @@ const ListEquipment: FC = () => {
                   type="date"
                   name="availableFrom"
                   id="availableFrom"
+                  defaultValue={equipment.availableFrom}
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
                 />
               </div>
@@ -257,6 +288,7 @@ const ListEquipment: FC = () => {
                   type="date"
                   name="availableTo"
                   id="availableTo"
+                  defaultValue={equipment.availableTo}
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
                 />
               </div>
@@ -267,6 +299,7 @@ const ListEquipment: FC = () => {
                 type="checkbox"
                 name="insuranceRequired"
                 id="insuranceRequired"
+                defaultChecked={equipment.insuranceRequired}
                 className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
               />
               <label htmlFor="insuranceRequired" className="ml-2 block text-sm text-gray-700">
@@ -287,7 +320,7 @@ const ListEquipment: FC = () => {
                 disabled={loading}
                 className="px-4 py-2 text-sm font-medium text-white bg-primary-600 border border-transparent rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? 'Listing...' : 'List Equipment'}
+                {loading ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           </form>
@@ -297,4 +330,4 @@ const ListEquipment: FC = () => {
   )
 }
 
-export default ListEquipment 
+export default EquipmentEditPage 

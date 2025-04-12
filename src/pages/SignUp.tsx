@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Loader2, Mail, Lock, User, Phone } from 'lucide-react'
+import Logo from '../components/Logo'
 
 const SignUp = () => {
   const navigate = useNavigate()
@@ -74,6 +75,9 @@ const SignUp = () => {
           animate={{ opacity: 1, y: 0 }}
           className="max-w-md w-full space-y-8"
         >
+          <div className="flex justify-center">
+            <Logo />
+          </div>
           <div>
             <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
               Create your account

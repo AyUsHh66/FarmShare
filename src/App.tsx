@@ -17,6 +17,8 @@ import FAQ from './pages/footer/FAQ'
 import Privacy from './pages/footer/Privacy'
 import Terms from './pages/footer/Terms'
 import MyEquipment from './pages/MyEquipment'
+import CropPrediction from './pages/CropPrediction'
+import EquipmentEditPage from './pages/EquipmentEditPage'
 import { initializeData } from './utils/initializeData'
 
 function App() {
@@ -32,11 +34,13 @@ function App() {
           <Route path="/equipment" element={<Equipment />} />
           <Route path="/how-it-works" element={<HowItWorks />} />
           <Route path="/list-equipment" element={<ListEquipment />} />
+          <Route path="/equipment/:id/edit" element={<EquipmentEditPage />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/signin" element={<SignIn />} />
           <Route path="/signup" element={<SignUp />} />
           <Route path="/rental-requests" element={<RentalRequests />} />
           <Route path="/my-equipment" element={<MyEquipment />} />
+          <Route path="/crop-prediction" element={<CropPrediction />} />
           <Route path="/about" element={<About />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/faq" element={<FAQ />} />

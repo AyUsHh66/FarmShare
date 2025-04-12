@@ -43,7 +43,7 @@ const MyEquipment: FC = () => {
   };
 
   const handleEdit = (id: number) => {
-    navigate(`/list-equipment/${id}`);
+    navigate(`/equipment/${id}/edit`);
   };
 
   const handleDelete = (id: number) => {

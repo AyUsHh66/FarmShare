@@ -247,16 +247,13 @@ const SignIn = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.7 }}
-              className="w-24 h-24 bg-white rounded-full flex items-center justify-center mb-8"
+              className="w-24 h-24 bg-white rounded-full flex items-center justify-center mb-8 overflow-hidden"
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                className="w-16 h-16 text-primary-600"
-              >
-                <path d="M5 12V9.5C5 8.67 5.67 8 6.5 8H10V6H9C8.45 6 8 5.55 8 5C8 4.45 8.45 4 9 4H15C15.55 4 16 4.45 16 5C16 5.55 15.55 6 15 6H14V8H17.5C18.33 8 19 8.67 19 9.5V12H20V15H19L18 19H6L5 15H4V12H5M6.5 12H17.5V9.5H6.5V12M7.5 15H16.5L17 17H7L7.5 15Z" />
-              </svg>
+              <img
+                src="/farmer.png"
+                alt="FarmShare Logo"
+                className="w-full h-full object-cover"
+              />
             </motion.div>
             <div className="max-w-md text-center">
               <motion.h2
