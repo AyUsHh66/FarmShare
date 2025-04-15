@@ -45,7 +45,7 @@ const CropPrediction = () => {
       }
 
       // Call the Flask API
-      const response = await fetch('http://localhost:5000/predict', {
+      const response = await fetch('http://localhost:5001/predict', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
