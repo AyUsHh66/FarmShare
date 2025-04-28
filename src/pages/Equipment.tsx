@@ -348,7 +348,7 @@ const Equipment: FC = () => {
                       <div className="text-gray-500">Total Days:</div>
                       <div className="text-gray-900 font-medium">{rentalDetails.totalDays}</div>
                       <div className="text-gray-500">Total Cost:</div>
-                      <div className="text-gray-900 font-medium">${rentalDetails.totalCost}</div>
+                      <div className="text-gray-900 font-medium">₹{rentalDetails.totalCost.toLocaleString()}</div>
                     </div>
                   </div>
                 </div>

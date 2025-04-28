@@ -1,0 +1,1 @@
+totalCost = number of days * daily rate 
